@@ -15,7 +15,7 @@
         android:paddingLeft="10dp"
         android:paddingRight="10dp"
         android:paddingTop="5dp"
-        android:text="Sampleleft"
+        android:text="Sample Left Message"
         android:textColor="#000" />
 
 </RelativeLayout>
