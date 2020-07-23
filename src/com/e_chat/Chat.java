@@ -14,27 +14,35 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.StrictMode;
+import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
+import android.app.ActionBar;
 import android.app.Activity;
+import android.content.Intent;
 import android.database.DataSetObserver;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
 import android.graphics.Rect;
 import android.graphics.RectF;
+import android.graphics.drawable.ColorDrawable;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.View;
 import android.view.View.OnClickListener;
+import android.view.WindowManager;
 import android.widget.AbsListView;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import android.widget.ListAdapter;
 import android.widget.ListView;
 import android.widget.SimpleAdapter;
@@ -48,39 +56,46 @@ public class Chat extends Activity {
 
 	E_Chat_Home home = new E_Chat_Home();
 	ListView lv;
-	ImageButton ib1, ib2, ib3, ib4, ib5;
+	ImageButton ib1, ib2, ib4, ib5;
 	TextView txt_name;
 	EditText txt_msg_typing;
-	TableRow tr;
+	TableRow t;
 	String name, toid, uid = home.user_id, msg, ext = "txt";
 	private arrayadapter chatArrayAdapter;
 	private boolean side = false;
+	public static String FLAGCHAT = "false";
+	public static String FLAGCHATCLEAR = "false";
+	public static String LASTSEEN;
 
 	public static String[] id;
 	public static String[] mmsg;
 	public static String[] mtime;
-	public static String[] mdate;
 
 	public static String[] mmsg2;
 	public static String[] mtime2;
-	public static String[] mdate2;
+
 	Handler timerHandler = new Handler();
 	Runnable timerRunnable = new Runnable() {
 		@Override
 		public void run() {
 			// TODO Auto-generated method stub
 			status();
-			// viewChat();
+			clearCheck();
+			viewChat();
 			timerHandler.postDelayed(this, 10000);
 		}
 
 	};
 
-	@TargetApi(Build.VERSION_CODES.GINGERBREAD)
+	@SuppressLint("NewApi")
+	@TargetApi(Build.VERSION_CODES.HONEYCOMB)
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
-		
+
 		super.onCreate(savedInstanceState);
+		ActionBar bar = getActionBar();
+		bar.setBackgroundDrawable(new ColorDrawable(Color.parseColor("#48b3ff")));
+		getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_PAN);
 		setContentView(R.layout.activity_chat);
 
 		try {
@@ -88,24 +103,37 @@ public class Chat extends Activity {
 				StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
 				StrictMode.setThreadPolicy(policy);
 			}
-		} catch (Exception e) {}
+		} catch (Exception e) {
+		}
 
 		txt_name = (TextView) findViewById(R.id.textView1);
 		txt_msg_typing = (EditText) findViewById(R.id.editText1);
 		ib1 = (ImageButton) findViewById(R.id.imageButton1);
 		ib2 = (ImageButton) findViewById(R.id.imageButton2);
-		ib3 = (ImageButton) findViewById(R.id.imageButton3);
 		ib4 = (ImageButton) findViewById(R.id.imageButton4);
 		ib5 = (ImageButton) findViewById(R.id.imageButton5);
 
 		lv = (ListView) findViewById(R.id.listView1);
-		tr = (TableRow) findViewById(R.id.tableRow3);
+		t = (TableRow) findViewById(R.id.tableRow3);
 
 		// TODO : Replace with dummy values
-//		toid = getIntent().getStringExtra("id");
-//		name = getIntent().getStringExtra("name");
-		toid = "2";
-		name = "kiran";
+		toid = getIntent().getStringExtra("id");
+		name = getIntent().getStringExtra("name");
+		txt_name.setText(name);
+
+		SoapObject sob = new SoapObject(soapclass.NAMESPACE, "profile_pic");
+		sob.addProperty("uid", toid);
+		soapclass sc = new soapclass();
+		String ou = sc.Callsoap(sob, "http://tempuri.org/profile_pic");
+		if (!ou.equals("ERROR") && !ou.equals("")) {
+			Bitmap bmp = downloadBitmap(ou);
+			Bitmap bmp2 = getRoundedCornerBitmap(bmp, 300);
+			ib1.setImageBitmap(bmp2);
+		}
+
+		status();
+		// toid = "2";
+		// name = "kiran";
 
 		chatArrayAdapter = new arrayadapter(getApplicationContext(), R.layout.right_msg);
 		lv.setAdapter(chatArrayAdapter);
@@ -115,6 +143,7 @@ public class Chat extends Activity {
 			@Override
 			public void onClick(View arg0) {
 				// TODO Auto-generated method stub
+
 				sendChatMessage();
 
 			}
@@ -126,6 +155,8 @@ public class Chat extends Activity {
 			public boolean onKey(View v, int keyCode, KeyEvent event) {
 				// TODO Auto-generated method stub
 				if ((event.getAction() == KeyEvent.ACTION_DOWN) && (keyCode == KeyEvent.KEYCODE_ENTER)) {
+
+					insert();
 					return sendChatMessage();
 				}
 				return false;
@@ -136,18 +167,6 @@ public class Chat extends Activity {
 		lv.setTranscriptMode(AbsListView.TRANSCRIPT_MODE_ALWAYS_SCROLL);
 		lv.setAdapter(chatArrayAdapter);
 
-		txt_name.setText(name);
-
-		SoapObject sob = new SoapObject(soapclass.NAMESPACE, "profile_pic");
-		sob.addProperty("uid", toid);
-		soapclass sc = new soapclass();
-		String ou = sc.Callsoap(sob, "http://tempuri.org/profile_pic");
-		if (!ou.equals("ERROR") && !ou.equals("")) {
-			Bitmap bmp = downloadBitmap(ou);
-			Bitmap bmp2 = getRoundedCornerBitmap(bmp, 300);
-			ib1.setImageBitmap(bmp2);
-		} else {}
-		status();
 		viewChat();
 		timerHandler.postDelayed(timerRunnable, 0);
 
@@ -158,22 +177,23 @@ public class Chat extends Activity {
 				// TODO Auto-generated method stub
 
 				msg = txt_msg_typing.getText().toString();
-				SoapObject sob = new SoapObject(soapclass.NAMESPACE, "chat_insert");
-				sob.addProperty("sid", uid);
-				sob.addProperty("rid", toid);
-				sob.addProperty("msg_cont", msg);
-				sob.addProperty("msg_ext", ext);
-				// Toast.makeText(getApplicationContext(),""+msg,Toast.LENGTH_SHORT).show();
-				soapclass sc = new soapclass();
-				String ou = sc.Callsoap(sob, "http://tempuri.org/chat_insert");
-				if (!ou.equals("ERROR") && !ou.equals("")) {
-					sendChatMessage();
-					// viewChat();
-
-					txt_msg_typing.setText("");
-				} else {
-					Toast.makeText(getApplicationContext(), "Failed to send", Toast.LENGTH_SHORT).show();
-				}
+				insert();
+//				SoapObject sob = new SoapObject(soapclass.NAMESPACE, "chat_insert");
+//				sob.addProperty("sid", uid);
+//				sob.addProperty("rid", toid);
+//				sob.addProperty("msg_cont", msg);
+//				sob.addProperty("msg_ext", ext);
+//				// Toast.makeText(getApplicationContext(),""+msg,Toast.LENGTH_SHORT).show();
+//				soapclass sc = new soapclass();
+//				String ou = sc.Callsoap(sob, "http://tempuri.org/chat_insert");
+//				if (!ou.equals("ERROR") && !ou.equals("")) {
+//					sendChatMessage();
+//					// viewChat();
+//
+//					txt_msg_typing.setText("");
+//				} else {
+//					Toast.makeText(getApplicationContext(), "Failed to send", Toast.LENGTH_SHORT).show();
+//				}
 			}
 		});
 
@@ -187,8 +207,12 @@ public class Chat extends Activity {
 	}
 
 	private boolean sendChatMessage() {
-		chatArrayAdapter.add(new ChatMessage(side, txt_msg_typing.getText().toString()));
-		txt_msg_typing.setText("");
+		if (txt_msg_typing.getText().toString().matches("")) {
+			txt_msg_typing.setText("");
+		} else {
+			chatArrayAdapter.add(new ChatMessage(side, txt_msg_typing.getText().toString()));
+			txt_msg_typing.setText("");
+		}
 		// side = !side;
 		return true;
 	}
@@ -209,18 +233,72 @@ public class Chat extends Activity {
 
 	}
 
+	public void clearCheck() {
+		SoapObject sob1 = new SoapObject(soapclass.NAMESPACE, "clearcheck");
+		sob1.addProperty("sid", uid);
+		sob1.addProperty("rid", toid);
+		soapclass sc = new soapclass();
+		String ou = sc.Callsoap(sob1, "http://tempuri.org/clearcheck");
+		if (!ou.equals("") && !ou.equals("error")) {
+			FLAGCHATCLEAR = "true";
+			LASTSEEN = ou;
+		}
+	}
+
 	public void viewChat() {
 
+		clearCheck();
 		SoapObject sob1 = new SoapObject(soapclass.NAMESPACE, "chat_select_person");
 		sob1.addProperty("uid", uid);
 		sob1.addProperty("toid", toid);
 		soapclass sc = new soapclass();
 		String ou = sc.Callsoap(sob1, "http://tempuri.org/chat_select_person");
-		if (!ou.equals("")) {
-			if (!ou.equals("error")) {
-				tolist2(ou);
-				// Toast.makeText(getApplicationContext(),""+ou,Toast.LENGTH_SHORT).show();
+		if (!ou.equals("") && !ou.equals("error")) {
+			if (FLAGCHAT.matches("false")) {
+				if (FLAGCHATCLEAR.matches("false")) {
+					tolist2(ou);
+					FLAGCHAT = "true";
+				} else {
+					sob1 = new SoapObject(soapclass.NAMESPACE, "chat_select_personLastTime");
+					sob1.addProperty("uid", uid);
+					sob1.addProperty("toid", toid);
+					sob1.addProperty("datetime", LASTSEEN);
+					sc = new soapclass();
+					ou = sc.Callsoap(sob1, "http://tempuri.org/chat_select_personLastTime");
+					if (!ou.equals("") && !ou.equals("error")) {
+
+						tolist2(ou);
+						FLAGCHAT = "true";
+
+					}
+				}
+			} else {
+
+				String[] rw = ou.split("@");
+				String[] Lasttime = new String[rw.length];
+				for (int i = 0; i < rw.length; i++) {
+					String[] elt = rw[i].split("#");
+					Lasttime[i] = elt[3];
+				}
+
+				sob1 = new SoapObject(soapclass.NAMESPACE, "chat_select_personLastTime");
+				sob1.addProperty("uid", uid);
+				sob1.addProperty("toid", toid);
+				sob1.addProperty("datetime", Lasttime[(Lasttime.length) - 1]);
+				sc = new soapclass();
+				ou = sc.Callsoap(sob1, "http://tempuri.org/chat_select_personLastTime");
+				if (!ou.equals("") && !ou.equals("error")) {
+
+					tolist2(ou);
+					FLAGCHAT = "true";
+
+				}
+
 			}
+			// Toast.makeText(getApplicationContext(),""+ou,Toast.LENGTH_SHORT).show();
+		} else {
+
+			return;
 		}
 
 	}
@@ -234,43 +312,43 @@ public class Chat extends Activity {
 
 	public void tolist2(String ou) {
 
-		String[] rw = ou.split("@");
-		int cc = rw.length;
-		ArrayList<HashMap<String, String>> dat = new ArrayList<HashMap<String, String>>();
-		mmsg = new String[rw.length];
-		mtime = new String[rw.length];
-		mdate = new String[rw.length];
+		if (!ou.matches("")) {
+			String[] rw = ou.split("@");
+			int cc = rw.length;
+			ArrayList<HashMap<String, String>> dat = new ArrayList<HashMap<String, String>>();
+			mmsg = new String[rw.length];
+			mtime = new String[rw.length];
 
-		mmsg2 = new String[rw.length];
-		mtime2 = new String[rw.length];
-		mdate2 = new String[rw.length];
-		int k = -1, j = -1;
-		// Toast.makeText(getApplicationContext(),, Toast.LENGTH_SHORT).show();
-		for (int i = 0; i < rw.length; i++) {
-			String[] elt = rw[i].split("#");
-			HashMap<String, String> hmap = new HashMap<String, String>();
-			if (elt[1].equals(uid)) {
+			mmsg2 = new String[rw.length];
+			mtime2 = new String[rw.length];
 
-				k++;
-				mmsg[i] = elt[5];
-				sendChatMessage2(elt[5]);
-				mtime[i] = elt[3];
-				mdate[i] = elt[4];
+			int k = -1, j = -1;
+			// Toast.makeText(getApplicationContext(),, Toast.LENGTH_SHORT).show();
+			for (int i = 0; i < rw.length; i++) {
+				String[] elt = rw[i].split("#");
+				HashMap<String, String> hmap = new HashMap<String, String>();
+				if (elt[1].equals(uid)) {
 
-				// adapter3(mmsg,mtime,mdate);
-				// Toast.makeText(getApplicationContext(),mmsg[k], Toast.LENGTH_SHORT).show();
+					k++;
+					mmsg[i] = elt[4];
+					sendChatMessage2(elt[4]);
+					mtime[i] = elt[3];
 
-			} else {
-				j++;
-				mmsg2[j] = elt[5];
-				side = !side;
-				sendChatMessage2(elt[5]);
-				side = !side;
-				mtime2[j] = elt[3];
-				mdate2[j] = elt[4];
-				// adapter4(mmsg2,mtime2,mdate2);
+					// adapter3(mmsg,mtime,mdate);
+					// Toast.makeText(getApplicationContext(),mmsg[k], Toast.LENGTH_SHORT).show();
+
+				} else {
+					j++;
+					mmsg2[j] = elt[4];
+					side = !side;
+					sendChatMessage2(elt[4]);
+					side = !side;
+					mtime2[j] = elt[3];
+
+					// adapter4(mmsg2,mtime2,mdate2);
+				}
+
 			}
-
 		}
 
 	}
@@ -313,7 +391,7 @@ public class Chat extends Activity {
 		ArrayList<HashMap<String, String>> dat = new ArrayList<HashMap<String, String>>();
 		mmsg = new String[rw.length];
 		mtime = new String[rw.length];
-		mdate = new String[rw.length];
+
 		// Toast.makeText(getApplicationContext(),, Toast.LENGTH_SHORT).show();
 		for (int i = 0; i < rw.length; i++) {
 			String[] elt = rw[i].split("#");
@@ -387,6 +465,13 @@ public class Chat extends Activity {
 			}
 		}
 		return null;
+	}
+
+	public void onBackPressed() {
+		FLAGCHAT = "false";
+		Intent i = new Intent(getApplicationContext(), E_Chat_Home.class);
+		i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+		startActivity(i);
 	}
 
 	@Override

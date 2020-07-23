@@ -118,8 +118,7 @@ public class E_Chat_Home extends Activity {
 				// cursorSim.getString(cursorSim.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME));
 
 				idArr.add(id2);
-				if (Integer.parseInt(cursorSim
-						.getString(cursorSim.getColumnIndex(ContactsContract.Contacts.HAS_PHONE_NUMBER))) > 0) {
+				if (Integer.parseInt(cursorSim.getString(cursorSim.getColumnIndex(ContactsContract.Contacts.HAS_PHONE_NUMBER))) > 0) {
 
 					Cursor pCur = cr.query(ContactsContract.CommonDataKinds.Phone.CONTENT_URI, null,
 							ContactsContract.CommonDataKinds.Phone.CONTACT_ID + " = ?", new String[] { id2 }, null);
@@ -132,6 +131,7 @@ public class E_Chat_Home extends Activity {
 						} else {
 							ognm = phone;
 						}
+						Log.d("E_Chat", "Phone : "+ognm);
 
 						String sp = ognm.replaceAll("\\s", "");
 						String spp = sp.replaceAll("\\W", "");
@@ -139,8 +139,10 @@ public class E_Chat_Home extends Activity {
 
 						obj = new SoapObject(soapclass.NAMESPACE, "contact_number");
 						obj.addProperty("phone", spp);
+						Log.d("E_Chat", "Spp : "+spp);
 						sc = new soapclass();
 						ou = sc.Callsoap(obj, "http://tempuri.org/contact_number");
+						Log.d("E_Chat", "Ou : "+ou);
 						if (!ou.equals("") && !ou.equals("error")) {
 							Toast.makeText(getApplicationContext(), ou, Toast.LENGTH_SHORT).show();
 
@@ -149,6 +151,7 @@ public class E_Chat_Home extends Activity {
 
 								idd.add(K[0]);
 								if (name != "") {
+									Log.d("E_Chat", "Name : "+name);
 									nameArr.add(name);
 								}
 								nameArr.add(K[2]);

@@ -5,9 +5,12 @@ import org.ksoap2.serialization.SoapObject;
 import org.ksoap2.serialization.SoapSerializationEnvelope;
 import org.ksoap2.transport.HttpTransportSE;
 
+import android.util.Log;
+
 public class soapclass {
 	public static String NAMESPACE = "http://tempuri.org/";
 //	public static final String url = "http://192.168.43.162/E_Chat/WebService.asmx";
+//	public static final String url = "http://192.168.43.89/ASP_NET/E_Chat/WebService.asmx";
 	public static final String url = "http://192.168.43.89/E_Chat/WebService.asmx";
 
 	public String Callsoap(SoapObject soapobj, String SOAP_ACTION) {
@@ -25,6 +28,7 @@ public class soapclass {
 
 		} catch (Exception e) {
 			e.printStackTrace();
+			Log.d("E_Chat", "Exception : "+e.getLocalizedMessage());
 		}
 		return outp;
 
